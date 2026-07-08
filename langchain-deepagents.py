@@ -51,14 +51,15 @@ insecure_http_async_client = httpx.AsyncClient(verify=False)
 
 # OpenRouter는 OpenAI 호환 API를 제공하므로 model_provider를 openai로 설정합니다.
 model = init_chat_model(
-    model="openai/gpt-5-mini",
+    model="anthropic/claude-sonnet-5",
     model_provider="openai",
     api_key=api_key,
     base_url=base_url,
     streaming=True,
-    # gpt-5 계열은 추론 시간이 길어 사소한 질문도 수십 초 걸린다. low 로 두면 호출당
-    # 지연이 크게 줄어 메신저 응답이 빨라진다. 복잡한 추론이 필요하면 medium/high 로.
-    reasoning_effort="low",
+    # reasoning_effort 는 OpenRouter 가 provider 별 추론 설정으로 변환한다(Anthropic 은
+    # thinking budget 으로 매핑). low 는 지연이 짧고, 복잡한 추론·에이전트 지속성이
+    # 필요하면 medium/high 로 올린다.
+    reasoning_effort="medium",
     http_client=insecure_http_client,
     http_async_client=insecure_http_async_client,
 )
