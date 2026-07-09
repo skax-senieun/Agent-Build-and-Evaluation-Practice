@@ -54,4 +54,10 @@ J
 - SAP Discovery Center 검색용 web_search 도구 추가: 검색 시 "site:discovery-center.cloud.sap" 등 도메인 제한을
   반드시 포함하여 SAP Discovery Center 외 출처가 검색되지 않도록 함. 로컬 캐시가 최신(30일 이내)이면 web_search를
   호출하지 않음. system_prompt.md(도구 섹션), SKILL.md(적용 범위, 워크플로우 3단계)에 반영됨.
+- meta-harness 스킬로 "Agent 정량 채점" 능력 고도화 완료: 기존에는 LLM이 CAP 안정성 점수를 직관적으로 배점해
+  같은 질의를 재실행해도 점수가 크게 요동쳤음(예: 43점→78점). langchain-deepagents.py의 SYSTEM_PROMPT에
+  "## Quantitative / Scored Evaluations" 규칙(명시적 공식 사용, 가정 고정·재사용, 단조성 자체검증)을 국소
+  추가하여 채점을 공식 기반으로 강제, baseline 대비 확실한 우세로 판정 후 본체에 반영함. 트레이드오프: 실행
+  시간/토큰 사용량 약 2.7배 증가. 상세 리포트: /output/meta_harness_upgrade_report.md.
+  → 향후 "점수/등급/랭킹을 매겨달라"는 요청에는 이 규칙이 이미 시스템 프롬프트에 있으므로 자동 적용됨.
 
