@@ -41,6 +41,12 @@ J
 - CSV 없이 대화(채팅)로도 산정 가능하도록 방식 B(대화형 입력) 추가: system_summary, total_users(전체 사용자 수),
   weekday_dau(평일 일간 활성 사용자 수) 3가지를 질문하여 수집. weekday_dau는 활성 사용량(동시접속 등) 산정에,
   total_users는 스토리지 등 전체 사용자 수 기반 자원 추정에 사용. system_prompt.md, SKILL.md, report_template.md에 반영됨.
+- 사용자 위치: 한국(타임존 Asia/Seoul, KST). 날짜/시간 관련 작업은 KST 기준으로 처리.
+- MCP 서버 설정: /mcp_servers.json 생성 및 time 서버(mcp-server-time, --local-timezone Asia/Seoul) 등록 완료.
+  이전에는 mcp_servers.example.json만 존재했음(로드 안 됨). 실제 사용 시 mcp_servers.json에 등록해야 함.
+- 환율 조회 MCP 서버(exchange_rate: uvx frankfurtermcp) 등록 완료. Frankfurter API(ECB 기반, 무료) 사용,
+  EUR 포함 주요 통화 실시간/과거 환율 제공. EUR→KRW 환율 병기 자동화에 활용 가능. MCP 서버는 에이전트
+  프로세스 재시작 후에야 도구 목록에 반영됨(등록만으로 즉시 사용 불가).
 - 통화 정책 확정: 비용 기준(단가)은 EUR로 저장/표시(사용료 기준금액이 EUR임). 실제 비용 산정/리포팅 시에는
   EUR→KRW 환율로 변환하여 KRW로 표기. 적용 환율과 기준일을 보고서에 항상 명시. 환율 미제공 시 사용자에게 확인
   요청 또는 최근 공개 환율을 가정값으로 명시. /data/sap_discovery_costs.json 샘플 데이터의 currency를 USD→EUR로

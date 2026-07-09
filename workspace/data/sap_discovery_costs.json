@@ -2,67 +2,34 @@
   {
     "source": "SAP Discovery Center",
     "resource_type": "application_runtime",
-    "resource_id": "cf.standard.small",
-    "spec_tier": "small",
-    "unit_spec": {"vCPU": 1, "memory_GB": 2, "storage_GB": 20},
-    "price": {"unit": "hour", "amount": 0.045, "currency": "EUR"},
-    "notes": "Cloud Foundry standard runtime, small tier",
+    "resource_id": "cf.runtime.standard",
+    "spec_tier": "standard",
+    "unit_spec": {"memory_GB": 1},
+    "price": {"unit": "GB-month", "amount_btpea": 85.00, "amount_payg": 110.50, "currency": "EUR"},
+    "notes": "SAP BTP Cloud Foundry Runtime. 과금 단위: GB 메모리/월. BTPEA(엔터프라이즈 계약) 및 PAYG(Pay-As-You-Go) 요율 병기. 예시: 4GB = BTPEA 340.00 EUR / PAYG 442.00 EUR",
     "last_updated": "2026-07-08",
-    "source_link": "https://discovery-center.cloud.sap/example/cf-standard-small"
-  },
-  {
-    "source": "SAP Discovery Center",
-    "resource_type": "application_runtime",
-    "resource_id": "cf.standard.medium",
-    "spec_tier": "medium",
-    "unit_spec": {"vCPU": 2, "memory_GB": 4, "storage_GB": 40},
-    "price": {"unit": "hour", "amount": 0.082, "currency": "EUR"},
-    "notes": "Cloud Foundry standard runtime, medium tier",
-    "last_updated": "2026-07-08",
-    "source_link": "https://discovery-center.cloud.sap/example/cf-standard-medium"
-  },
-  {
-    "source": "SAP Discovery Center",
-    "resource_type": "application_runtime",
-    "resource_id": "cf.standard.large",
-    "spec_tier": "large",
-    "unit_spec": {"vCPU": 4, "memory_GB": 8, "storage_GB": 80},
-    "price": {"unit": "hour", "amount": 0.156, "currency": "EUR"},
-    "notes": "Cloud Foundry standard runtime, large tier",
-    "last_updated": "2026-07-08",
-    "source_link": "https://discovery-center.cloud.sap/example/cf-standard-large"
+    "source_link": "https://discovery-center.cloud.sap/serviceCatalog/cloud-foundry-runtime?region=all&tab=service_plan"
   },
   {
     "source": "SAP Discovery Center",
     "resource_type": "hana_db",
-    "resource_id": "hana.cloud.small",
-    "spec_tier": "small",
-    "unit_spec": {"memory_GB": 32, "storage_GB": 128},
-    "price": {"unit": "month", "amount": 870.0, "currency": "EUR"},
-    "notes": "SAP HANA Cloud, small memory instance",
+    "resource_id": "hana.cloud.memory",
+    "spec_tier": "standard",
+    "unit_spec": {"memory_GB": 1},
+    "price": {"unit": "GB-month", "amount_btpea": 20.74, "amount_payg": 26.83, "currency": "EUR"},
+    "notes": "SAP HANA Cloud, 메모리 기준 과금(Capacity Unit 기반이나 GB당 환산). 예시: 32GB Memory = BTPEA 663.75 EUR / PAYG 858.45 EUR",
     "last_updated": "2026-07-08",
-    "source_link": "https://discovery-center.cloud.sap/example/hana-cloud-small"
-  },
-  {
-    "source": "SAP Discovery Center",
-    "resource_type": "hana_db",
-    "resource_id": "hana.cloud.medium",
-    "spec_tier": "medium",
-    "unit_spec": {"memory_GB": 64, "storage_GB": 256},
-    "price": {"unit": "month", "amount": 1650.0, "currency": "EUR"},
-    "notes": "SAP HANA Cloud, medium memory instance",
-    "last_updated": "2026-07-08",
-    "source_link": "https://discovery-center.cloud.sap/example/hana-cloud-medium"
+    "source_link": "https://discovery-center.cloud.sap/serviceCatalog/sap-hana-cloud?region=all&tab=service_plan"
   },
   {
     "source": "SAP Discovery Center",
     "resource_type": "object_store",
     "resource_id": "objectstore.standard",
     "spec_tier": "standard",
-    "unit_spec": {"storage_GB": 1},
-    "price": {"unit": "GB-month", "amount": 0.018, "currency": "EUR"},
-    "notes": "표준 오브젝트 스토리지 요금(단위: GB당 월)",
+    "unit_spec": {"storage_GB": 100},
+    "price": {"unit": "100GB-month", "amount": 12.00, "currency": "EUR"},
+    "notes": "Object Store, 100GB 블록 단위 과금(AWS S3/Azure Blob/GCS 공용 요율)",
     "last_updated": "2026-07-08",
-    "source_link": "https://discovery-center.cloud.sap/example/object-store-standard"
+    "source_link": "https://discovery-center.cloud.sap/serviceCatalog/object-store?service_plan=standard&region=all&commercialModel=btpea&tab=service_plan"
   }
 ]
