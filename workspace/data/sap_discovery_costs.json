@@ -1,0 +1,68 @@
+[
+  {
+    "source": "SAP Discovery Center",
+    "resource_type": "application_runtime",
+    "resource_id": "cf.standard.small",
+    "spec_tier": "small",
+    "unit_spec": {"vCPU": 1, "memory_GB": 2, "storage_GB": 20},
+    "price": {"unit": "hour", "amount": 0.045, "currency": "EUR"},
+    "notes": "Cloud Foundry standard runtime, small tier",
+    "last_updated": "2026-07-08",
+    "source_link": "https://discovery-center.cloud.sap/example/cf-standard-small"
+  },
+  {
+    "source": "SAP Discovery Center",
+    "resource_type": "application_runtime",
+    "resource_id": "cf.standard.medium",
+    "spec_tier": "medium",
+    "unit_spec": {"vCPU": 2, "memory_GB": 4, "storage_GB": 40},
+    "price": {"unit": "hour", "amount": 0.082, "currency": "EUR"},
+    "notes": "Cloud Foundry standard runtime, medium tier",
+    "last_updated": "2026-07-08",
+    "source_link": "https://discovery-center.cloud.sap/example/cf-standard-medium"
+  },
+  {
+    "source": "SAP Discovery Center",
+    "resource_type": "application_runtime",
+    "resource_id": "cf.standard.large",
+    "spec_tier": "large",
+    "unit_spec": {"vCPU": 4, "memory_GB": 8, "storage_GB": 80},
+    "price": {"unit": "hour", "amount": 0.156, "currency": "EUR"},
+    "notes": "Cloud Foundry standard runtime, large tier",
+    "last_updated": "2026-07-08",
+    "source_link": "https://discovery-center.cloud.sap/example/cf-standard-large"
+  },
+  {
+    "source": "SAP Discovery Center",
+    "resource_type": "hana_db",
+    "resource_id": "hana.cloud.small",
+    "spec_tier": "small",
+    "unit_spec": {"memory_GB": 32, "storage_GB": 128},
+    "price": {"unit": "month", "amount": 870.0, "currency": "EUR"},
+    "notes": "SAP HANA Cloud, small memory instance",
+    "last_updated": "2026-07-08",
+    "source_link": "https://discovery-center.cloud.sap/example/hana-cloud-small"
+  },
+  {
+    "source": "SAP Discovery Center",
+    "resource_type": "hana_db",
+    "resource_id": "hana.cloud.medium",
+    "spec_tier": "medium",
+    "unit_spec": {"memory_GB": 64, "storage_GB": 256},
+    "price": {"unit": "month", "amount": 1650.0, "currency": "EUR"},
+    "notes": "SAP HANA Cloud, medium memory instance",
+    "last_updated": "2026-07-08",
+    "source_link": "https://discovery-center.cloud.sap/example/hana-cloud-medium"
+  },
+  {
+    "source": "SAP Discovery Center",
+    "resource_type": "object_store",
+    "resource_id": "objectstore.standard",
+    "spec_tier": "standard",
+    "unit_spec": {"storage_GB": 1},
+    "price": {"unit": "GB-month", "amount": 0.018, "currency": "EUR"},
+    "notes": "표준 오브젝트 스토리지 요금(단위: GB당 월)",
+    "last_updated": "2026-07-08",
+    "source_link": "https://discovery-center.cloud.sap/example/object-store-standard"
+  }
+]

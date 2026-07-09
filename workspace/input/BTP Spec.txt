@@ -1,0 +1,4 @@
+CSP,resource_id,resource_type,spec_tier,unit_spec,system_summary,expected_users
+SAP BTP,hana.cloud,hana_db,memory,"vCPU:2~4, memory_GB:2~4, storage_GB:120~200",직원 법인카드 비용정산 시스템,4000
+SAP BTP,cloud foundry,application,middle,"apps:4(portal,service,file uploader, logger, instance 1~4개, memory_GB:1~4, storage_GB:1~2",직원 법인카드 비용정산 시스템,4000
+SAP BTP,objectstore.standard,object_store,standard,"storage_GB:100",직원 법인카드 비용정산 시스템,4000
