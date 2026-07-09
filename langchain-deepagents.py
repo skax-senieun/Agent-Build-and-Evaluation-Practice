@@ -16,6 +16,8 @@ langgraph.json 이 아래 `agent` 그래프를 참조한다.
 
 import json
 import os
+import shutil
+import threading
 from pathlib import Path
 
 import dotenv
@@ -72,17 +74,22 @@ model = init_chat_model(
 WORKSPACE = Path(os.getenv("WORKSPACE_DIR", "workspace")).expanduser().resolve()
 WORKSPACE.mkdir(parents=True, exist_ok=True)
 
-# 스킬 디렉터리(workspace/skills). 각 스킬은 SKILL.md(+ 스크립트)를 가진 하위 폴더다.
-# git 으로 관리되는 workspace_seed/skills/ 를 workspace/skills 로 매 실행 시 동기화한다.
-# → 시드 스킬을 업데이트하면 자동 반영된다. 이 시드를 거치지 않는 일회성 스킬은
-#   workspace_seed 밖의 다른 이름으로 workspace/skills 에 직접 만들면 된다(동기화 영향 없음).
+# 스킬(skills/)과 메모리(AGENTS.md)만 workspace ↔ workspace_seed 로 동기화해 git 으로
+# 관리한다. 에이전트는 평소처럼 workspace/ 안에서 작업하고(virtual_mode=True 가드레일 유지),
+# 아래 동기화가 두 폴더를 맞춘다:
+#   · 부팅 시 : seed → workspace (git 에 있는 최신 스킬/메모리로 시작; 추가·갱신만, 삭제 없음)
+#   · 런타임  : workspace → seed 를 백그라운드 워처로 실시간 미러(에이전트/사용자가 만든·고친·
+#              지운 스킬·메모리가 곧바로 git 추적 파일에 반영됨. 삭제도 반영하되, 전체 트리를
+#              지우는 게 아니라 실제로 바뀐 경로만 정확히 반영한다 → 오삭제 위험 최소화)
+# workspace/ 는 .gitignore 되므로 git 에는 workspace_seed/ 만 남는다.
 #
-# 주의: shutil.copytree 는 내용이 같아도 매번 파일을 다시 써 mtime 을 바꾼다.
-# langgraph dev 는 workspace/ 를 감시(watchfiles)하므로, 그럴 경우 import→동기화→
-# 파일 변경 감지→리로드→다시 동기화 의 '무한 리로드 루프'에 빠진다. 그래서 내용이
-# 실제로 달라진 파일만 쓰는 idempotent 동기화를 사용한다(동일하면 건드리지 않음).
+# 주의: 무조건 덮어쓰면 내용이 같아도 파일 mtime 이 바뀐다. langgraph dev 는 파일을
+# 감시(watchfiles)하므로 그럴 경우 리로드 루프에 빠진다. 그래서 내용이 실제로 달라진
+# 파일만 쓰는 idempotent 동기화를 쓴다(동일하면 건드리지 않음 → 워처가 재발화하지 않음).
 def _sync_tree(src: Path, dst: Path) -> None:
-    """src 트리를 dst 로 복사하되, 내용이 바뀐 파일만 실제로 쓴다."""
+    """src 트리를 dst 로 복사하되, 내용이 바뀐 파일만 실제로 쓴다(추가·갱신만, 삭제 없음)."""
+    if not src.is_dir():
+        return
     for _p in src.rglob("*"):
         _rel = _p.relative_to(src)
         _target = dst / _rel
@@ -90,20 +97,50 @@ def _sync_tree(src: Path, dst: Path) -> None:
             _target.mkdir(parents=True, exist_ok=True)
             continue
         _data = _p.read_bytes()
-        # 내용이 같으면 건너뛴다(파일을 건드리지 않아 리로드가 유발되지 않음).
         if _target.exists() and _target.read_bytes() == _data:
             continue
         _target.parent.mkdir(parents=True, exist_ok=True)
         _target.write_bytes(_data)
 
 
-_skills_dir = WORKSPACE / "skills"
-_skills_dir.mkdir(parents=True, exist_ok=True)
-_seed_skills = Path("workspace_seed/skills")
-if _seed_skills.is_dir():
-    for _src in _seed_skills.iterdir():
-        if _src.is_dir():
-            _sync_tree(_src, _skills_dir / _src.name)
+def _sync_file(src: Path, dst: Path) -> None:
+    """단일 파일을 내용이 달라졌을 때만 복사한다."""
+    if not src.is_file():
+        return
+    _data = src.read_bytes()
+    if dst.exists() and dst.read_bytes() == _data:
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_bytes(_data)
+
+
+_SEED_DIR = Path("workspace_seed").resolve()
+_SEED_SKILLS = _SEED_DIR / "skills"
+_SEED_AGENTS = _SEED_DIR / "AGENTS.md"
+_WS_SKILLS = WORKSPACE / "skills"
+_WS_AGENTS = WORKSPACE / "AGENTS.md"
+
+_SEED_SKILLS.mkdir(parents=True, exist_ok=True)
+if not _SEED_AGENTS.exists():
+    _SEED_AGENTS.write_text(
+        "# Agent Memory\n\n"
+        "이 파일은 에이전트가 사용자에 대해 학습한 내용을 기록하는 장기 메모리다.\n"
+        "(선호, 반복되는 피드백, 역할 정의, 도구 사용에 필요한 정보 등)\n\n"
+        "## User\n\n## Preferences\n\n## Notes\n",
+        encoding="utf-8",
+    )
+
+# 구버전에서 만들었을 수 있는 심링크 잔재를 제거한다. virtual_mode=True 에서는 workspace 밖
+# (workspace_seed)을 가리키는 심링크가 경로 가드에 막히므로, 반드시 '실제' 파일이어야 한다.
+for _leftover in (_WS_SKILLS, _WS_AGENTS):
+    if _leftover.is_symlink():
+        _leftover.unlink()
+
+# 부팅 동기화: seed → workspace (추가·갱신만).
+_WS_SKILLS.mkdir(parents=True, exist_ok=True)
+_sync_tree(_SEED_SKILLS, _WS_SKILLS)
+if not _WS_AGENTS.exists():
+    _sync_file(_SEED_AGENTS, _WS_AGENTS)
 
 # 이메일 트리거 규칙 파일(workspace/email_triggers.json). 없으면 빈 배열로 만들어
 # 두어(스킬 set-email-triggers 로 CRUD) 위치를 발견하기 쉽게 한다.
@@ -111,27 +148,57 @@ _triggers = WORKSPACE / "email_triggers.json"
 if not _triggers.exists():
     _triggers.write_text("[]\n", encoding="utf-8")
 
-# 메모리 파일(workspace/AGENTS.md). 에이전트가 사용자의 선호·피드백·역할 등을
-# edit_file 로 이 파일에 스스로 기록하고, 다음 세션에 자동으로 불러온다.
-# 초기 템플릿은 git 으로 관리되는 workspace_seed/AGENTS.md 를 쓴다(없을 때만 주입 =
-# seed-once). 이미 있으면 건드리지 않아, 에이전트가 런타임에 쌓은 기억이 보존된다.
-# 시드 파일이 없으면 최소 인라인 템플릿으로 대체한다.
-_agents_md = WORKSPACE / "AGENTS.md"
-if not _agents_md.exists():
-    _seed_md = Path("workspace_seed/AGENTS.md")
-    if _seed_md.is_file():
-        _agents_md.write_text(_seed_md.read_text(encoding="utf-8"), encoding="utf-8")
-    else:
-        _agents_md.write_text(
-            "# Agent Memory\n\n"
-            "이 파일은 에이전트가 사용자에 대해 학습한 내용을 기록하는 장기 메모리다.\n"
-            "(선호, 반복되는 피드백, 역할 정의, 도구 사용에 필요한 정보 등)\n\n"
-            "## User\n\n## Preferences\n\n## Notes\n",
-            encoding="utf-8",
-        )
+# 런타임 동기화: workspace → seed 를 백그라운드에서 실시간 미러한다.
+# watchfiles 로 workspace/skills 와 workspace/AGENTS.md 변경을 감지해 곧바로 시드에 반영.
+# 변경된 '경로'만 처리하므로(추가/수정=복사, 삭제=제거) 오삭제 위험이 없고, 내용 비교 후
+# 달라진 파일만 쓰므로 seed 쓰기가 다시 워처를 깨우는 무한 루프도 없다.
+def _seed_target(ws_path: Path) -> Path | None:
+    """workspace 쪽 경로에 대응하는 workspace_seed 쪽 경로. 대상 밖이면 None."""
+    if ws_path == _WS_AGENTS:
+        return _SEED_AGENTS
+    try:
+        return _SEED_SKILLS / ws_path.relative_to(_WS_SKILLS)
+    except ValueError:
+        return None
+
+
+def _mirror_change(ws_path: Path) -> None:
+    """workspace 의 현재 상태를 seed 로 반영한다(존재하면 복사, 사라졌으면 삭제)."""
+    seed_path = _seed_target(ws_path)
+    if seed_path is None:
+        return
+    if ws_path.is_dir():
+        seed_path.mkdir(parents=True, exist_ok=True)
+    elif ws_path.exists():
+        _sync_file(ws_path, seed_path)
+    elif seed_path.is_dir():
+        shutil.rmtree(seed_path, ignore_errors=True)
+    elif seed_path.exists():
+        seed_path.unlink()
+
+
+def _seed_sync_loop() -> None:
+    from watchfiles import watch
+
+    for _changes in watch(str(_WS_SKILLS), str(_WS_AGENTS), raise_interrupt=False):
+        for _change, _p in _changes:
+            try:
+                _mirror_change(Path(_p))
+            except OSError:
+                # 파일이 교체되는 순간의 일시적 오류는 다음 이벤트에서 다시 맞춰진다.
+                pass
+
+
+# langgraph dev 의 핫 리로드로 모듈이 여러 번 import 될 수 있으므로, 워처 스레드는 한 번만
+# 띄운다(같은 이름의 스레드가 이미 살아 있으면 건너뜀).
+_WATCHER_NAME = "seed-sync-watcher"
+if not any(_t.name == _WATCHER_NAME for _t in threading.enumerate()):
+    threading.Thread(target=_seed_sync_loop, name=_WATCHER_NAME, daemon=True).start()
 
 # LocalShellBackend = 실제 파일시스템 조작 + 셸 실행(execute).
 # - virtual_mode=True: 파일 도구의 경로를 workspace 기준으로 제한(.. 탈출 방지 가드레일).
+#   스킬/메모리는 workspace 안의 '실제' 파일을 읽고 쓰며, 시드(git)와의 동기화는 위의
+#   부팅 복사 + 백그라운드 워처가 담당한다(에이전트가 시드를 직접 건드리지 않음).
 #   전체 머신 접근이 필요하면 WORKSPACE_DIR 를 넓게 잡거나 virtual_mode=False 로 바꾼다.
 # - inherit_env=True: git/python 등 로컬 도구를 그대로 쓸 수 있게 환경변수 상속.
 backend = LocalShellBackend(
@@ -241,8 +308,9 @@ connector_tools = build_connector_tools()
 # ---------------------------------------------------------------------------
 # 스킬(Skill) — Anthropic Agent Skills 패턴(점진적 공개)
 # ---------------------------------------------------------------------------
-# 스킬 소스 디렉터리(backend=workspace 기준 경로). 여러 개면 뒤로 갈수록 우선순위가 높다.
-# 각 스킬은 workspace/skills/<이름>/SKILL.md 형태로 둔다.
+# 스킬 소스 디렉터리(backend=workspace 기준 가상경로). 여러 개면 뒤로 갈수록 우선순위가 높다.
+# 각 스킬은 workspace/skills/<이름>/SKILL.md 형태로 둔다. 이 폴더는 부팅 시 시드에서 채워지고,
+# 에이전트가 만든/고친 스킬은 워처가 workspace_seed/skills(=git)로 실시간 미러한다.
 # 에이전트는 처음엔 스킬의 이름·설명만 보고, 필요할 때 read_file 로 전체 지침을 읽는다.
 SKILL_SOURCES = ["/skills/"]
 
@@ -251,7 +319,8 @@ SKILL_SOURCES = ["/skills/"]
 # 메모리(Memory) — AGENTS.md 장기 기억
 # ---------------------------------------------------------------------------
 # 아래 파일들의 내용이 매 세션 시스템 프롬프트에 주입되고, 에이전트는 edit_file 로
-# 스스로 갱신한다(선호·피드백·역할 등). backend=workspace 기준 경로.
+# 스스로 갱신한다(선호·피드백·역할 등). backend=workspace 기준 가상경로.
+# 워처가 workspace/AGENTS.md 변경을 workspace_seed/AGENTS.md(=git)로 실시간 미러한다.
 MEMORY_SOURCES = ["/AGENTS.md"]
 
 
@@ -270,6 +339,25 @@ SYSTEM_PROMPT = """You are a deep agent, an AI assistant that helps users accomp
 - Don't say "I'll now do X" — just do it.
 - If the request is underspecified, ask only the minimum followup needed to take the next useful action.
 - If asked how to approach something, explain first, then act.
+- The default workspace is `workspace`, unless `WORKSPACE_DIR` is explicitly set.
+- `workspace_seed/` is source data and templates. It is synced into `workspace/` on startup, but runtime tools operate against `workspace/`, not `workspace_seed/`.
+- `workspace_seed/skills/<name>/SKILL.md` syncs to `workspace/skills/<name>/SKILL.md` and defines available skill behavior.
+- `workspace/AGENTS.md` is the agent's long-term memory file. `workspace/email_triggers.json` is a persisted rule file.
+- File and shell tools are rooted in `workspace/` via `LocalShellBackend(root_dir=WORKSPACE, virtual_mode=True)`, so treat `workspace/` as the base directory for read/write/execute operations.
+- Use files outside `/workspace` only when absolutely necessary and when the environment supports it. By default, tools are limited to the workspace base.
+
+## Repository structure (approximate)
+
+- / (repo root)
+  - `.env`, `.env.example`, `.gitignore`, `pyproject.toml`, `langchain-deepagents.py`, `gateway.py`, `mcp_servers.json`, `docs/`, `example_skills/`
+  - `.venv/`, `.playwright-mcp/`, `.langgraph_api/` (local environment/runtime artifacts)
+  - `workspace/`
+    - `AGENTS.md`
+    - `email_triggers.json`
+    - `skills/`
+  - `workspace_seed/`
+    - `AGENTS.md`
+    - `skills/`
 
 ## Professional Objectivity
 

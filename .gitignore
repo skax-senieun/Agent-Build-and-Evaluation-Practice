@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 .langgraph_api/
 mcp_servers.json
+.playwright-mcp
